@@ -1,16 +1,31 @@
-# Virtual environments
-venv*/
-env/
-.venv/
-HARmony_Backend/venv_deploy/
-
-# Build artifacts
-*.zip
-HARmony_Frontend/harmony_app.zip
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+HARmony_Backend/venv_deploy/
+HARmony_Backend/.env
 
-# Large dataset files (optional – you can keep them if using Git LFS)
-HARmony_ML_Core/data/
+# IDE
+.idea/
+.vscode/
+
+# Flutter
+HARmony_Frontend/harmony_app/android/build/
+HARmony_Frontend/harmony_app/ios/build/
+HARmony_Frontend/harmony_app/pubspec.lock
+HARmony_Frontend/harmony_app/.dart_tool/
+
+# ML training artifacts
+HARmony_ML_Core/processed_data/
+HARmony_ML_Core/tuning_dir/
+*.h5
+*.npy
+
+# Build outputs
+*.zip
+*.tar.gzgit add .gitignore

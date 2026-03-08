@@ -84,9 +84,12 @@ class SensorService {
   }
 
   void _maybeEmitInferenceWindow() {
-    if (_accBuffer.length >= _windowSize && _gyroBuffer.length >= _windowSize) {
+    if (_accBuffer.length >= _windowSize) {
       final accList = _accBuffer.take(_windowSize).toList();
-      final gyroList = _gyroBuffer.take(_windowSize).toList();
+      // For now, use dummy gyroscope data if not available
+      final gyroList = _gyroBuffer.length >= _windowSize
+          ? _gyroBuffer.take(_windowSize).toList()
+          : List<GyroscopeEvent>.generate(_windowSize, (i) => GyroscopeEvent(0.0, 0.0, 0.0));
       final window = SensorWindow.fromSensorData(
         timestamp: DateTime.now().millisecondsSinceEpoch,
         accelerometerEvents: accList,
@@ -98,6 +101,7 @@ class SensorService {
       for (int i = 0; i < _windowSize && _accBuffer.isNotEmpty; i++) {
         _accBuffer.removeFirst();
       }
+      // Also remove from gyro buffer if available
       for (int i = 0; i < _windowSize && _gyroBuffer.isNotEmpty; i++) {
         _gyroBuffer.removeFirst();
       }

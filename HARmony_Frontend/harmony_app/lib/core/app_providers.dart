@@ -7,6 +7,8 @@ import 'package:harmony_app/features/activity_recognition/services/activity_stor
 import 'package:harmony_app/features/activity_recognition/services/api_service.dart';
 import 'package:harmony_app/features/activity_recognition/services/backend_status_service.dart';
 import 'package:harmony_app/features/activity_recognition/services/sensor_service.dart';
+import 'package:harmony_app/core/config/app_config.dart';
+import 'package:harmony_app/core/services/backend_config_service.dart';
 import 'package:harmony_app/shared/database/app_database.dart';
 import 'package:harmony_app/shared/services/model_inference_service.dart';
 
@@ -19,17 +21,19 @@ final sensorServiceProvider = Provider<SensorService>((ref) {
   return s;
 });
 
+/// Configuration provider that exposes a mutable backend URL stored in
+/// shared preferences.  The value is initialized to AppConfig.apiBaseUrl and
+/// can be overridden by users if their host IP changes.
+final backendConfigProvider = ChangeNotifierProvider<BackendConfigService>((ref) {
+  final cfg = BackendConfigService();
+  return cfg;
+});
+
 /// Provide the ApiService configured to point at Flask backend with PostgreSQL
 /// Use 10.0.2.2 for Android emulators to access localhost on the host machine
 final apiServiceProvider = Provider<ApiService>((ref) {
-  // PRODUCTION: Change to your Flask backend server IP/domain
-  // Example: 'http://your-server.com:8000' or 'http://192.168.1.100:8000'
-  String baseUrl = 'http://localhost:8000'; // Local development - UPDATED PORT
-
-  if (kDebugMode && Platform.isAndroid) {
-    // For physical Android devices on local network - use actual IP
-    baseUrl = 'http://192.168.8.106:8000'; // Your machine's IP address
-  }
+  final cfg = ref.watch(backendConfigProvider);
+  final String baseUrl = cfg.baseUrl;
 
   if (kDebugMode) {
     print('🔗 API Service configured to: $baseUrl');
@@ -40,11 +44,8 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 
 /// Backend status service for health checks and model info
 final backendStatusServiceProvider = Provider<BackendStatusService>((ref) {
-  String baseUrl = 'http://localhost:8000'; // New TFLite backend port
-
-  if (kDebugMode && Platform.isAndroid) {
-    baseUrl = 'http://192.168.8.106:8000'; // Your machine's IP address
-  }
+  final cfg = ref.watch(backendConfigProvider);
+  final String baseUrl = cfg.baseUrl;
 
   if (kDebugMode) {
     print('🔗 Backend Status Service configured to: $baseUrl');

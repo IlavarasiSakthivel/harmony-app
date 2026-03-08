@@ -113,11 +113,19 @@ class _DiagnosticScreenState extends ConsumerState<DiagnosticScreen> with Single
 
       for (var activity in _activities) {
         total++;
-        // Create dummy sensor window for prediction
+        // Create proper sensor window with 40 samples (required by API)
         final mockSensorWindow = SensorWindow(
           timestamp: DateTime.now().millisecondsSinceEpoch,
-          accelerometer: [],
-          gyroscope: [],
+          accelerometer: List.generate(40, (i) => [
+            _random.nextDouble() * 2 - 1, // x: -1 to 1
+            _random.nextDouble() * 2 - 1, // y: -1 to 1
+            _random.nextDouble() * 12 - 2, // z: -2 to 10 (gravity)
+          ]),
+          gyroscope: List.generate(40, (i) => [
+            _random.nextDouble() * 10 - 5, // x: -5 to 5
+            _random.nextDouble() * 10 - 5, // y: -5 to 5
+            _random.nextDouble() * 10 - 5, // z: -5 to 5
+          ]),
         );
         
         try {
@@ -145,8 +153,8 @@ class _DiagnosticScreenState extends ConsumerState<DiagnosticScreen> with Single
       _addLog('🔍 Running final validation...');
       final dummySensorWindow = SensorWindow(
         timestamp: DateTime.now().millisecondsSinceEpoch,
-        accelerometer: [const [0.0, 0.0, 9.8]],
-        gyroscope: [const [0.0, 0.0, 0.0]],
+        accelerometer: List.generate(40, (i) => [0.0, 0.0, 9.8]), // 40 samples of standing still
+        gyroscope: List.generate(40, (i) => [0.0, 0.0, 0.0]),     // 40 samples of no rotation
       );
       var finalPrediction = await ref.read(apiServiceProvider).predictActivity(dummySensorWindow);
       setState(() {
@@ -825,11 +833,11 @@ class _DiagnosticScreenState extends ConsumerState<DiagnosticScreen> with Single
     _addLog('⚡ Running quick test...');
 
     try {
-      // Create dummy sensor window for prediction
+      // Create dummy sensor window for prediction (40 samples)
       final dummySensorWindow = SensorWindow(
         timestamp: DateTime.now().millisecondsSinceEpoch,
-        accelerometer: [const [0.0, 0.0, 9.8]],
-        gyroscope: [const [0.0, 0.0, 0.0]],
+        accelerometer: List.generate(40, (_) => [0.0, 0.0, 9.8]),
+        gyroscope: List.generate(40, (_) => [0.0, 0.0, 0.0]),
       );
 
       var prediction = await ref.read(apiServiceProvider).predictActivity(dummySensorWindow);

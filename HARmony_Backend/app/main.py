@@ -141,7 +141,8 @@ async def predict_activity(sensor_data: SensorData):
             activity=prediction_result['activity'],
             confidence=prediction_result['confidence'],
             user_id=sensor_data.user_id,
-            timestamp=datetime.now().isoformat(),
+            # send timestamp as integer milliseconds
+            timestamp=int(datetime.now().timestamp() * 1000),
             status="success",
             all_probabilities=prediction_result['probabilities']
         )
@@ -151,3 +152,14 @@ async def predict_activity(sensor_data: SensorData):
         raise # Re-raise HTTPExceptions
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Prediction failed: {e}")
+
+
+# Simple diagnostics endpoint for quick test count
+@app.get(
+    "/diagnostics/quick-tests/count",
+    summary="Quick test count",
+    description="Returns the number of quick tests run (placeholder implementation).",
+)
+async def quick_test_count():
+    # In a real deployment this might query a database or cache.
+    return {"count": 0}

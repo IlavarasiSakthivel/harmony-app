@@ -69,14 +69,22 @@ class ApiService {
           .timeout(AppConfig.sendTimeout + AppConfig.receiveTimeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final predictionResp = PredictionResponse.fromJson(data);
+        try {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final predictionResp = PredictionResponse.fromJson(data);
 
-        return ActivityModel(
-          activity: predictionResp.activity,
-          confidence: predictionResp.confidence.clamp(0.0, 1.0),
-          timestamp: predictionResp.timestamp,
-        );
+          return ActivityModel(
+            activity: predictionResp.activity,
+            confidence: predictionResp.confidence.clamp(0.0, 1.0),
+            timestamp: predictionResp.timestamp,
+          );
+        } catch (e) {
+          if (kDebugMode) {
+            print('🔴 Failed to parse prediction response: $e');
+            print('    raw body: ${response.body}');
+          }
+          throw Exception('Failed to parse prediction response: $e');
+        }
       } else if (response.statusCode == 400) {
         throw Exception('Invalid sensor data: Need exactly 120 sensor values (40x3)');
       } else if (response.statusCode == 503) {
@@ -92,6 +100,12 @@ class ApiService {
 
   /// GET /health - Check backend health status
   Future<bool> checkConnection() async {
+    // if baseUrl is empty we haven't loaded configuration yet
+    if (baseUrl.isEmpty) {
+      if (kDebugMode) print('⚠️ checkConnection skipped: baseUrl empty');
+      return false;
+    }
+
     try {
       final uri = Uri.parse('$baseUrl${AppConfig.healthCheckEndpoint}');
       if (kDebugMode) print('🔵 GET $uri (health check)');
@@ -144,8 +158,21 @@ class ApiService {
     return null;
   }
 
-  /// Legacy: Fetch quick test count (not supported on new backend)
+  /// GET /diagnostics/quick-tests/count
+  /// Returns an integer count provided by the backend (0 if unsupported).
   Future<int> getQuickTestCount() async {
+    try {
+      final uri = Uri.parse('$baseUrl/diagnostics/quick-tests/count');
+      final resp = await _httpClient.get(uri).timeout(AppConfig.connectionTimeout);
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final count = data['count'];
+        if (count is num) return count.toInt();
+      }
+      if (kDebugMode) print('ApiService.getQuickTestCount unexpected status ${resp.statusCode}');
+    } catch (e) {
+      if (kDebugMode) print('ApiService.getQuickTestCount network error: $e');
+    }
     return 0;
   }
 

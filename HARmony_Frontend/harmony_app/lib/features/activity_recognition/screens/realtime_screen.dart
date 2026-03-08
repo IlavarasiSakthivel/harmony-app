@@ -10,6 +10,8 @@ import 'package:harmony_app/shared/widgets/tailwind/tw_colors.dart';
 import 'package:harmony_app/shared/widgets/theme_provider.dart' show themeProviderProvider, ThemeProvider;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:harmony_app/core/services/backend_config_service.dart';
+import 'package:harmony_app/features/activity_recognition/widgets/sensor_buffering_progress_widget.dart';
 
 class RealtimeRecognitionScreen extends ConsumerStatefulWidget {
   const RealtimeRecognitionScreen({Key? key}) : super(key: key);
@@ -71,9 +73,15 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
           if (isConnected) {
             _statusMessage = '✓ Connected to Flask backend';
             _modelStatus = 'loaded';
+            _backendError = '';
+            _backendHealthy = true;
+            _modelLoaded = true;
           } else {
             _statusMessage = '⚠ Flask backend unavailable - using local mode';
             _modelStatus = 'error';
+            _backendError = 'Unable to reach backend';
+            _backendHealthy = false;
+            _modelLoaded = false;
           }
         });
       }
@@ -82,6 +90,8 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
         setState(() {
           _statusMessage = '⚠ Connection error: $e';
           _modelStatus = 'error';
+          _backendHealthy = false;
+          _modelLoaded = false;
         });
       }
     }
@@ -104,8 +114,34 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
     }
   }
 
-  void _startMonitoring() {
+  // utility for showing transient messages to the user
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _startMonitoring() async {
     if (_isMonitoring) return;
+
+    // Check backend availability before beginning data collection
+    final api = ref.read(apiServiceProvider);
+    final connected = await api.checkConnection();
+    if (!connected) {
+      if (mounted) {
+        setState(() {
+          _backendError = 'Unable to reach backend';
+          _modelStatus = 'error';
+          _statusMessage = '⚠ Backend unreachable - cannot start';
+        });
+      }
+      _showSnackBar('Cannot start monitoring: backend unreachable', TWColors.red500);
+      return;
+    }
 
     final sensorService = ref.read(sensorServiceProvider);
 
@@ -114,6 +150,7 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
       _sessionStartTime = DateTime.now();
       _statusMessage = '📍 Monitoring started - Collecting sensor data...';
       _isCollectingData = true;
+      _backendError = '';
     });
 
     sensorService.startSensors();
@@ -976,6 +1013,8 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
           if (mounted) {
             setState(() {
               _statusMessage = '⚠ Prediction error: ${error.toString().split(':').last}';
+              _backendError = error.toString();
+              _modelStatus = 'error';
             });
           }
           if (kDebugMode) print('❌ Prediction error: $error\n$stackTrace');
@@ -1084,31 +1123,8 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
                 ),
                 const SizedBox(height: 20),
 
-                // Sensor Buffering Progress (inline)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: themeProvider.isDarkMode ? TWColors.slate700 : TWColors.slate100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Sensor Data:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: _totalPredictions / 100,
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Samples collected: $_totalPredictions',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
+                // Sensor Buffering Progress
+                const SensorBufferingProgressWidget(),
                 const SizedBox(height: 20),
 
                 // Activity Card
@@ -1152,7 +1168,6 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
   void dispose() {
     _accelerometerStreamSubscription?.cancel();
     _gyroscopeStreamSubscription?.cancel();
-    ref.read(sensorServiceProvider).stopSensors(); // Ensure sensors are stopped on dispose
     super.dispose();
   }
 }

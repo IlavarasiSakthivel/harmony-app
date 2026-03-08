@@ -21,7 +21,8 @@ class PredictionResponse(BaseModel):
     activity: str = Field(..., example="walking")
     confidence: float = Field(..., example=0.95)
     user_id: str = Field(..., example="anonymous")
-    timestamp: str = Field(..., example="2026-01-26T12:34:56.789")
+    # timestamp is returned as milliseconds since epoch (int) for easier parsing by clients
+    timestamp: int = Field(..., example=1674843296789)
     status: str = Field(..., example="success")
     all_probabilities: Dict[str, float] = Field(..., example={"walking": 0.95, "running": 0.03, "sitting": 0.02})
 

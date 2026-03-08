@@ -48,6 +48,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await activityStorageService.saveSettings(currentSettings);
   }
 
+  void _showBackendUrlDialog(BuildContext context) {
+    final cfg = ref.read(backendConfigProvider);
+    final controller = TextEditingController(text: cfg.baseUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Backend URL'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'http://192.168.1.2:8000'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final url = controller.text.trim();
+              if (url.isNotEmpty) {
+                ref.read(backendConfigProvider).setBaseUrl(url);
+                _showSnackbar(context, 'Backend URL updated');
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = ref.watch(themeProviderProvider);
@@ -180,7 +212,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            // Backend Configuration
+            _buildSettingsCard(
+              themeProvider: themeProvider,
+              icon: Icons.cloud,
+              iconColor: TWColors.indigo500,
+              iconBgColor: themeProvider.isDarkMode ? TWColors.indigo900 : TWColors.indigo100,
+              title: 'Backend',
+              children: [
+                _buildSettingButton(
+                  themeProvider: themeProvider,
+                  icon: Icons.settings_ethernet,
+                  title: 'Configure URL',
+                  subtitle: 'Current: ${ref.watch(backendConfigProvider).baseUrl}',
+                  color: TWColors.indigo500,
+                  onTap: () => _showBackendUrlDialog(context),
+                ),
+              ],
+            ),
 
+            const SizedBox(height: 16),
             // Data Management
             _buildSettingsCard(
               themeProvider: themeProvider,

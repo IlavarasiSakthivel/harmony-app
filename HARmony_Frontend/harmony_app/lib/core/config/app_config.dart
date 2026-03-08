@@ -1,12 +1,10 @@
 /// App Configuration - Backend URLs, timeouts, and settings
 class AppConfig {
-  // Backend Configuration
-  static const String backendBaseUrl = 'http://localhost:8000';
-  static const String apiBaseUrl = '$backendBaseUrl/api';
-  
-  // For Android Device/Emulator - Replace with your actual backend IP
-  // static const String backendBaseUrl = 'http://192.168.x.x:8000';
-  // static const String apiBaseUrl = '$backendBaseUrl/api';
+  // Backend Configuration - Using ADB reverse port forwarding over USB
+  // adb reverse tcp:8000 tcp:8000 tunnels device:8000 → host:8000
+  static String backendBaseUrl = 'http://localhost:8000';
+  // NOTE: backend endpoints are mounted at root; do not append '/api' here
+  static String apiBaseUrl = backendBaseUrl;
   
   // API Endpoints
   static const String healthCheckEndpoint = '/health';

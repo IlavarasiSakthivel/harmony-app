@@ -7,20 +7,10 @@ import os
 import sys
 import socket
 
-def find_available_port(start_port=8000, max_attempts=10):
-    """Find an available port starting from start_port."""
-    for port in range(start_port, start_port + max_attempts):
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('0.0.0.0', port))
-            sock.close()
-            return port
-        except OSError:
-            continue
-    return start_port  # Fallback
-
 if __name__ == '__main__':
-    port = find_available_port(8000)
+    # Use a fixed port (8000) for predictable client configuration.
+    # Allow override with HAR_PORT env var if needed.
+    port = int(os.getenv('HAR_PORT', '8000'))
 
     print("=" * 60)
     print("🚀 HARmony Backend Server (FastAPI)")
