@@ -1,0 +1,7 @@
+{
+  "feature_count": 561,
+  "window_size": 128,
+  "sampling_rate": 50,
+  "model_version": "1.0.0",
+  "description": "Human Activity Recognition Model"
+}

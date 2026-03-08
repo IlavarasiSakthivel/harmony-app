@@ -1,0 +1,59 @@
+name: harmony_app
+description: Human Activity Recognition Flutter App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  sensors_plus: ^4.0.2
+  pedometer: ^4.0.2
+  tflite_flutter: ^0.11.0
+  collection: ^1.18.0
+  vector_math: ^2.1.4
+  syncfusion_flutter_gauges: ^25.1.43
+  path_provider: ^2.1.5
+  share_plus: ^10.0.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+  provider: ^6.1.2
+  fl_chart: ^0.70.2
+  http: ^1.1.0
+  json_annotation: ^4.9.0
+  flutter_riverpod: ^3.2.0
+  flutter_local_notifications: ^17.0.0
+  csv: ^6.0.0
+  pdf: ^3.10.0
+  printing: ^5.11.0
+  flutter_tts: ^4.0.2
+  floor: ^1.4.2
+  path: ^1.9.0
+  google_fonts: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.8
+  # floor_generator removed: conflicts with flutter_riverpod + build_runner on Dart 3.11.
+  # DB uses stub app_database.g.dart. To regenerate Floor code later, add floor_generator back when compatible.
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
+    - assets/config/
+    # - assets/har_model.tflite  # Uncomment when you add the model file
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#3B82F6"
+  adaptive_icon_foreground: "assets/icon/icon.png"

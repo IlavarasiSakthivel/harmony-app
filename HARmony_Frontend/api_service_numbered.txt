@@ -1,0 +1,456 @@
+     1	import 'dart:convert';
+     2	import 'package:http/http.dart' as http;
+     3	import 'package:harmony_app/features/activity_recognition/models/activity_model.dart';
+     4	import 'package:harmony_app/features/activity_recognition/models/sensor_window.dart';
+     5	import 'package:flutter/foundation.dart';
+     6	
+     7	/// API service for Flask backend with PostgreSQL and ML model
+     8	/// Production-ready endpoints for real activity recognition
+     9	class ApiService {
+    10	  final String baseUrl;
+    11	  static const Duration _timeout = Duration(seconds: 12);
+    12	
+    13	  ApiService({required this.baseUrl});
+    14	
+    15	  /// POST /predict with sensor data to get activity prediction
+    16	  /// Backend runs trained ML model on sensor window
+    17	  Future<ActivityModel> predictActivity(SensorWindow sensorData,
+    18	      {String userId = 'anonymous'}) async {
+    19	    try {
+    20	      final uri = Uri.parse('$baseUrl/api/predict');
+    21	
+    22	      // Flatten accelerometer data: [x1,y1,z1,x2,y2,z2,...]
+    23	      final List<double> flattenedData = [];
+    24	      for (final sample in sensorData.accelerometer) {
+    25	        flattenedData.add(sample[0]); // x
+    26	        flattenedData.add(sample[1]); // y
+    27	        flattenedData.add(sample[2]); // z
+    28	      }
+    29	
+    30	      final body = jsonEncode({
+    31	        'sensor_data': flattenedData,
+    32	        'user_id': userId,
+    33	        'timestamp': DateTime.now().toIso8601String(),
+    34	      });
+    35	
+    36	      if (kDebugMode) {
+    37	        print('ApiService: POST $uri with ${flattenedData.length} sensor values');
+    38	      }
+    39	
+    40	      final response = await http
+    41	          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+    42	          .timeout(_timeout);
+    43	
+    44	      if (response.statusCode == 200) {
+    45	        final data = jsonDecode(response.body) as Map<String, dynamic>;
+    46	        final activity = (data['activity'] ?? 'Unknown').toString();
+    47	        final confidence = ((data['confidence'] ?? 0.0) as num).toDouble();
+    48	        final timestamp = data['timestamp'] is int
+    49	            ? data['timestamp']
+    50	            : DateTime.now().millisecondsSinceEpoch;
+    51	
+    52	        return ActivityModel(
+    53	          activity: activity,
+    54	          confidence: confidence.clamp(0.0, 1.0),
+    55	          timestamp: timestamp,
+    56	        );
+    57	      } else if (response.statusCode == 400) {
+    58	        throw Exception('Invalid sensor data: ${response.body}');
+    59	      } else if (response.statusCode == 500) {
+    60	        throw Exception('Server error: ML model inference failed');
+    61	      } else {
+    62	        throw Exception('Server returned ${response.statusCode}: ${response.body}');
+    63	      }
+    64	    } catch (e) {
+    65	      if (kDebugMode) print('ApiService.predictActivity error: $e');
+    66	      rethrow;
+    67	    }
+    68	  }
+    69	
+    70	  /// GET /api/health to check backend status
+    71	  Future<bool> checkConnection() async {
+    72	    try {
+    73	      final uri = Uri.parse('$baseUrl/api/health');
+    74	      if (kDebugMode) print('ApiService: GET $uri');
+    75	
+    76	      final resp = await http.get(uri).timeout(const Duration(seconds: 5));
+    77	      return resp.statusCode == 200;
+    78	    } catch (e) {
+    79	      if (kDebugMode) print('ApiService.checkConnection error: $e');
+    80	      return false;
+    81	    }
+    82	  }
+    83	
+    84	  /// GET /api/activities to fetch all available activities/labels
+    85	  Future<List<String>> fetchActivityLabels() async {
+    86	    try {
+    87	      final uri = Uri.parse('$baseUrl/api/activities');
+    88	      if (kDebugMode) print('ApiService: GET $uri');
+    89	
+    90	      final resp = await http.get(uri).timeout(_timeout);
+    91	      if (resp.statusCode == 200) {
+    92	        final data = jsonDecode(resp.body);
+    93	        if (data is List) {
+    94	          return data.map((e) => e.toString()).toList();
+    95	        } else if (data is Map && data['activities'] is List) {
+    96	          return (data['activities'] as List).map((e) => e.toString()).toList();
+    97	        }
+    98	      }
+    99	      return ['Walking', 'Running', 'Sitting', 'Standing'];
+   100	    } catch (e) {
+   101	      if (kDebugMode) print('ApiService.fetchActivityLabels error: $e');
+   102	      return ['Walking', 'Running', 'Sitting', 'Standing'];
+   103	    }
+   104	  }
+   105	
+   106	  /// GET /api/sessions to fetch user's activity sessions from database
+   107	  Future<List<ActivitySession>> fetchRemoteSessions({String? userId, String? date}) async {
+   108	    try {
+   109	      var uri = Uri.parse('$baseUrl/api/sessions');
+   110	      if (userId != null) {
+   111	        uri = uri.replace(queryParameters: {'user_id': userId});
+   112	      }
+   113	      if (date != null) {
+   114	        uri = uri.replace(queryParameters: {
+   115	          ...?uri.queryParameters,
+   116	          'date': date,
+   117	        });
+   118	      }
+   119	
+   120	      if (kDebugMode) print('ApiService: GET $uri');
+   121	      final resp = await http.get(uri).timeout(_timeout);
+   122	
+   123	      if (resp.statusCode == 200) {
+   124	        final data = jsonDecode(resp.body);
+   125	        final List<ActivitySession> sessions = [];
+   126	
+   127	        if (data is List) {
+   128	          for (final item in data) {
+   129	            sessions.add(_parseSessionFromJson(item as Map<String, dynamic>));
+   130	          }
+   131	        } else if (data is Map && data['sessions'] is List) {
+   132	          for (final item in data['sessions']) {
+   133	            sessions.add(_parseSessionFromJson(item as Map<String, dynamic>));
+   134	          }
+   135	        }
+   136	
+   137	        return sessions;
+   138	      }
+   139	      return [];
+   140	    } catch (e) {
+   141	      if (kDebugMode) print('ApiService.fetchRemoteSessions error: $e');
+   142	      return [];
+   143	    }
+   144	  }
+   145	
+   146	  /// POST /api/sessions to save a new activity session to database
+   147	  Future<bool> saveSessionRemote(ActivitySession session) async {
+   148	    try {
+   149	      final uri = Uri.parse('$baseUrl/api/sessions');
+   150	
+   151	      final predictions = session.predictions
+   152	          .map((p) => {
+   153	                'activity': p.activity,
+   154	                'confidence': p.confidence,
+   155	                'timestamp': p.timestamp.toIso8601String(),
+   156	              })
+   157	          .toList();
+   158	
+   159	      final body = jsonEncode({
+   160	        'id': session.id,
+   161	        'start_time': session.startTime.toIso8601String(),
+   162	        'end_time': session.endTime.toIso8601String(),
+   163	        'summary_activity': session.summary ?? 'Mixed',
+   164	        'predictions': predictions,
+   165	      });
+   166	
+   167	      if (kDebugMode) print('ApiService: POST $uri');
+   168	      final resp = await http
+   169	          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+   170	          .timeout(_timeout);
+   171	
+   172	      return resp.statusCode == 201 || resp.statusCode == 200;
+   173	    } catch (e) {
+   174	      if (kDebugMode) print('ApiService.saveSessionRemote error: $e');
+   175	      return false;
+   176	    }
+   177	  }
+   178	
+   179	  /// GET /api/coach/insights for personalized coaching insights
+   180	  Future<Map<String, dynamic>?> fetchCoachInsights() async {
+   181	    try {
+   182	      final uri = Uri.parse('$baseUrl/api/coach/insights');
+   183	      if (kDebugMode) print('ApiService: GET $uri');
+   184	
+   185	      final resp = await http.get(uri).timeout(_timeout);
+   186	      if (resp.statusCode == 200) {
+   187	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   188	      }
+   189	      return null;
+   190	    } catch (e) {
+   191	      if (kDebugMode) print('ApiService.fetchCoachInsights error: $e');
+   192	      return null;
+   193	    }
+   194	  }
+   195	
+   196	  /// GET /api/analytics/summary for activity statistics
+   197	  Future<Map<String, dynamic>?> fetchAnalyticsSummary(String range) async {
+   198	    try {
+   199	      final uri = Uri.parse('$baseUrl/api/analytics/summary?range=$range');
+   200	      if (kDebugMode) print('ApiService: GET $uri');
+   201	
+   202	      final resp = await http.get(uri).timeout(_timeout);
+   203	      if (resp.statusCode == 200) {
+   204	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   205	      }
+   206	      return null;
+   207	    } catch (e) {
+   208	      if (kDebugMode) print('ApiService.fetchAnalyticsSummary error: $e');
+   209	      return null;
+   210	    }
+   211	  }
+   212	
+   213	  /// Helper: Parse session from JSON
+   214	  ActivitySession _parseSessionFromJson(Map<String, dynamic> json) {
+   215	    DateTime parseTs(dynamic raw) {
+   216	      if (raw is String) return DateTime.parse(raw);
+   217	      if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+   218	      return DateTime.now();
+   219	    }
+   220	
+   221	    final startTime = parseTs(json['start_time'] ?? json['startTime']);
+   222	    final endTime = parseTs(json['end_time'] ?? json['endTime']);
+   223	
+   224	    final predictions = <ActivityPrediction>[];
+   225	    final preds = json['predictions'] ?? [];
+   226	    if (preds is List) {
+   227	      for (final p in preds) {
+   228	        final pm = p as Map<String, dynamic>;
+   229	        predictions.add(ActivityPrediction(
+   230	          activity: pm['activity'] ?? 'Unknown',
+   231	          confidence: ((pm['confidence'] ?? 0.0) as num).toDouble(),
+   232	          timestamp: parseTs(pm['timestamp']),
+   233	        ));
+   234	      }
+   235	    }
+   236	
+   237	    return ActivitySession(
+   238	      id: json['id']?.toString() ?? startTime.millisecondsSinceEpoch.toString(),
+   239	      startTime: startTime,
+   240	      endTime: endTime,
+   241	      predictions: predictions,
+   242	      summary: json['summary_activity'] ?? json['summary'],
+   243	    );
+   244	  }
+   245	}
+   246	
+   247	  /// Fetch recorded activities from the remote backend. Returns an empty list
+   248	  /// on error.
+   249	  Future<List<ActivitySession>> fetchRemoteSessions() async {
+   250	    try {
+   251	      final uri = Uri.parse('$baseUrl/api/activities');
+   252	      if (kDebugMode) print('ApiService: GET $uri (activities)');
+   253	      final resp = await http.get(uri).timeout(_timeout);
+   254	      if (resp.statusCode != 200) {
+   255	        if (kDebugMode) print('ApiService.fetchRemoteSessions: status ${resp.statusCode}');
+   256	        return [];
+   257	      }
+   258	
+   259	      final data = jsonDecode(resp.body);
+   260	      
+   261	      // Backend returns { "activities": [...], "count": 5, "status": "success" }
+   262	      // This is JUST a list of labels the model supports, not actual recorded sessions.
+   263	      // However, the frontend HistoryScreen uses this to display "recorded activities".
+   264	      // If the backend has no endpoint for SESSIONS, we might have to stick to local-only for history,
+   265	      // or at least handle this object correctly if it's meant to be something else.
+   266	      
+   267	      if (data is Map && data['activities'] is List) {
+   268	        return []; 
+   269	      }
+   270	
+   271	      if (data is! List) return [];
+   272	      
+   273	      final List<ActivitySession> sessions = [];
+   274	      for (final item in data) {
+   275	        try {
+   276	          final Map<String, dynamic> map = Map<String, dynamic>.from(item as Map);
+   277	          
+   278	          final startRaw = map['startTime'] ?? map['start_time'] ?? map['start'] ?? map['start_ts'];
+   279	          final endRaw = map['endTime'] ?? map['end_time'] ?? map['end'] ?? map['end_ts'];
+   280	          
+   281	          DateTime parseTs(dynamic raw) {
+   282	            if (raw == null) return DateTime.now();
+   283	            if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+   284	            if (raw is num) return DateTime.fromMillisecondsSinceEpoch(raw.toInt());
+   285	            final s = raw.toString();
+   286	            final asInt = int.tryParse(s);
+   287	            if (asInt != null) return DateTime.fromMillisecondsSinceEpoch(asInt);
+   288	            try {
+   289	              return DateTime.parse(s);
+   290	            } catch (_) {
+   291	              return DateTime.now();
+   292	            }
+   293	          }
+   294	
+   295	          final startTime = parseTs(startRaw);
+   296	          final endTime = parseTs(endRaw);
+   297	
+   298	          final id = (map['id'] ?? map['session_id'] ?? map['uid'] ?? startTime.millisecondsSinceEpoch).toString();
+   299	          final summary = (map['summary'] ?? map['label'] ?? map['activity'] ?? map['summary_activity'])?.toString();
+   300	
+   301	          final predsRaw = map['predictions'] ?? map['prediction_list'] ?? map['events'] ?? [];
+   302	          final List<ActivityPrediction> predictions = [];
+   303	          if (predsRaw is List) {
+   304	            for (final p in predsRaw) {
+   305	              try {
+   306	                final pm = Map<String, dynamic>.from(p as Map);
+   307	                final activity = (pm['activity'] ?? pm['label'] ?? pm['name'] ?? '').toString();
+   308	                final confidenceRaw = pm['confidence'] ?? pm['score'] ?? pm['probability'] ?? 0.0;
+   309	                final confidence = (confidenceRaw is num) ? confidenceRaw.toDouble() : double.tryParse(confidenceRaw.toString()) ?? 0.0;
+   310	                final tsRaw = pm['timestamp'] ?? pm['time'] ?? pm['ts'] ?? pm['t'];
+   311	                
+   312	                DateTime ts = parseTs(tsRaw);
+   313	                // If parseTs returned DateTime.now() due to null/error, fallback to startTime
+   314	                if (tsRaw == null) ts = startTime;
+   315	
+   316	                predictions.add(ActivityPrediction(
+   317	                  activity: activity.isNotEmpty ? activity : 'Unknown', 
+   318	                  confidence: confidence.clamp(0.0, 1.0), 
+   319	                  timestamp: ts
+   320	                ));
+   321	              } catch (e) {
+   322	                if (kDebugMode) print('ApiService.fetchRemoteSessions - prediction parse error: $e');
+   323	              }
+   324	            }
+   325	          }
+   326	
+   327	          final session = ActivitySession(
+   328	            id: id,
+   329	            startTime: startTime,
+   330	            endTime: endTime.isAfter(startTime) ? endTime : startTime.add(const Duration(seconds: 1)),
+   331	            predictions: predictions,
+   332	            summary: summary,
+   333	          );
+   334	          sessions.add(session);
+   335	        } catch (e) {
+   336	          if (kDebugMode) print('ApiService.fetchRemoteSessions - item parse error: $e');
+   337	        }
+   338	      }
+   339	
+   340	      return sessions;
+   341	    } catch (e) {
+   342	      if (kDebugMode) print('ApiService.fetchRemoteSessions network error: $e');
+   343	      return [];
+   344	    }
+   345	  }
+   346	
+   347	  /// Fetch quick test count exposed by the backend. Accepts either a raw
+   348	  /// integer in the response or an object like { "count": <n> }.
+   349	  Future<int> getQuickTestCount() async {
+   350	    try {
+   351	      final uri = Uri.parse('$baseUrl/api/diagnostics/quick-tests/count');
+   352	      if (kDebugMode) print('ApiService: GET $uri (quick-tests count)');
+   353	      final resp = await http.get(uri).timeout(_timeout);
+   354	      if (resp.statusCode == 200) {
+   355	        final data = jsonDecode(resp.body);
+   356	        if (data is int) return data;
+   357	        if (data is Map && data['count'] != null) return (data['count'] as num).toInt();
+   358	        // Try numeric string
+   359	        final asNum = int.tryParse(data.toString());
+   360	        if (asNum != null) return asNum;
+   361	      } else {
+   362	        if (kDebugMode) print('ApiService.getQuickTestCount unexpected status ${resp.statusCode}');
+   363	      }
+   364	    } catch (e) {
+   365	      if (kDebugMode) print('ApiService.getQuickTestCount network error: $e');
+   366	    }
+   367	
+   368	    // Fallback: no remote data
+   369	    return 0;
+   370	  }
+   371	
+   372	  Future<Map<String, dynamic>?> fetchCoachInsights() async {
+   373	    try {
+   374	      final uri = Uri.parse('$baseUrl/api/coach/insights');
+   375	      if (kDebugMode) print('ApiService: GET $uri (coach insights)');
+   376	      final resp = await http.get(uri).timeout(_timeout);
+   377	      if (resp.statusCode == 200) {
+   378	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   379	      } else {
+   380	        if (kDebugMode) print('ApiService.fetchCoachInsights status: ${resp.statusCode}');
+   381	      }
+   382	    } catch (e) {
+   383	      if (kDebugMode) print('ApiService.fetchCoachInsights error: $e');
+   384	    }
+   385	    return null;
+   386	  }
+   387	
+   388	  Future<bool> checkConnection() async {
+   389	    try {
+   390	      final uri = Uri.parse('$baseUrl/api/health');
+   391	      final resp = await http.get(uri).timeout(const Duration(seconds: 3));
+   392	      return resp.statusCode == 200;
+   393	    } catch (_) {
+   394	      return false;
+   395	    }
+   396	  }
+   397	
+   398	  Future<Map<String, dynamic>?> fetchAnalyticsSummary(String range) async {
+   399	    try {
+   400	      final uri = Uri.parse('$baseUrl/api/analytics/summary?range=$range');
+   401	      if (kDebugMode) print('ApiService: GET $uri (analytics summary)');
+   402	      final resp = await http.get(uri).timeout(_timeout);
+   403	      if (resp.statusCode == 200) {
+   404	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   405	      }
+   406	    } catch (e) {
+   407	      if (kDebugMode) print('ApiService.fetchAnalyticsSummary error: $e');
+   408	    }
+   409	    return null;
+   410	  }
+   411	
+   412	  Future<Map<String, dynamic>?> fetchHealthSnapshot(String dateIso) async {
+   413	    try {
+   414	      final uri = Uri.parse('$baseUrl/api/health/snapshot?date=$dateIso');
+   415	      if (kDebugMode) print('ApiService: GET $uri (health snapshot)');
+   416	      final resp = await http.get(uri).timeout(_timeout);
+   417	      if (resp.statusCode == 200) {
+   418	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   419	      }
+   420	    } catch (e) {
+   421	      if (kDebugMode) print('ApiService.fetchHealthSnapshot error: $e');
+   422	    }
+   423	    return null;
+   424	  }
+   425	
+   426	  Future<Map<String, dynamic>?> fetchModelInsights() async {
+   427	    try {
+   428	      final uri = Uri.parse('$baseUrl/api/model/insights');
+   429	      if (kDebugMode) print('ApiService: GET $uri (model insights)');
+   430	      final resp = await http.get(uri).timeout(_timeout);
+   431	      if (resp.statusCode == 200) {
+   432	        return Map<String, dynamic>.from(jsonDecode(resp.body) as Map);
+   433	      }
+   434	    } catch (e) {
+   435	      if (kDebugMode) print('ApiService.fetchModelInsights error: $e');
+   436	    }
+   437	    return null;
+   438	  }
+   439	
+   440	  Future<List<Map<String, dynamic>>> fetchTimeline(String dateIso) async {
+   441	    try {
+   442	      final uri = Uri.parse('$baseUrl/api/timeline?date=$dateIso');
+   443	      if (kDebugMode) print('ApiService: GET $uri (timeline)');
+   444	      final resp = await http.get(uri).timeout(_timeout);
+   445	      if (resp.statusCode == 200) {
+   446	        final body = jsonDecode(resp.body);
+   447	        if (body is List) {
+   448	          return body.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+   449	        }
+   450	      }
+   451	    } catch (e) {
+   452	      if (kDebugMode) print('ApiService.fetchTimeline error: $e');
+   453	    }
+   454	    return [];
+   455	  }
+   456	}

@@ -1,0 +1,144 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    HARmony App - RUN COMMANDS                             ║
+║              For Android Emulator & Physical Device                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+📋 STEP 1: START FLASK BACKEND
+════════════════════════════════════════════════════════════════════════════
+Terminal 1:
+-----------
+cd ~/backend
+python app.py
+Expected output:
+ * Running on http://127.0.0.1:5000
+ * Press CTRL+C to quit
+🗄️  STEP 2: START PostgreSQL DATABASE
+════════════════════════════════════════════════════════════════════════════
+Terminal 2 (only needed once per session):
+--------------------------------------------
+# Mac
+brew services start postgresql
+# Linux
+sudo systemctl start postgresql
+# Windows - Use services panel or PostgreSQL app
+🔌 STEP 3: CONFIGURE APP URL
+════════════════════════════════════════════════════════════════════════════
+Edit: harmony_app/lib/core/app_providers.dart (line 32)
+For Android Emulator:
+    String baseUrl = 'http://10.0.2.2:5000'\;
+For Physical Device (replace with your IP):
+    String baseUrl = 'http://192.168.1.5:5000'\;
+For Desktop:
+    String baseUrl = 'http://localhost:5000'\;
+Find your IP:
+  Mac/Linux: ifconfig | grep "inet " | grep -v 127.0.0.1
+  Windows:   ipconfig
+📱 STEP 4A: RUN ON ANDROID EMULATOR
+════════════════════════════════════════════════════════════════════════════
+Terminal 3:
+-----------
+cd ~/Documents/Final_Project/HARmony_Frontend/harmony_app
+# Check available emulators
+flutter emulators
+# Launch emulator (wait ~30 seconds to boot)
+flutter emulators launch <emulator_name>
+# OR start directly
+emulator -avd <emulator_name>
+# Run app (once emulator is ready)
+flutter run
+# For release build
+flutter run --release
+📱 STEP 4B: RUN ON PHYSICAL ANDROID DEVICE
+════════════════════════════════════════════════════════════════════════════
+Terminal 3:
+-----------
+# Connect phone via USB cable
+# Verify connection
+flutter devices
+# Run app
+flutter run -d <device_id>
+# OR get device name and run
+flutter run -d $(flutter devices | tail -1 | awk '{print $1}')
+# For release build
+flutter run --release -d <device_id>
+✅ EXPECTED OUTPUT
+════════════════════════════════════════════════════════════════════════════
+✓ Built build/app/outputs/flutter-debug.apk
+✓ Installed build/app/outputs/flutter-debug.apk
+🔗 API Service configured to: http://10.0.2.2:5000
+✓ Connected to Flask backend
+I/flutter: App started successfully
+🎮 USING THE APP
+════════════════════════════════════════════════════════════════════════════
+1. Home Screen appears
+2. Tap "Real-time Recognition"
+3. Tap "Start Monitoring"
+4. Walk/Run/Sit to generate activity
+5. Watch real-time predictions
+6. Tap "Stop" when done
+7. Session automatically saved
+8. Check "History" to see recorded sessions
+🌙 DARK MODE
+════════════════════════════════════════════════════════════════════════════
+1. Tap menu/settings
+2. Toggle "Dark Mode"
+3. App instantly switches theme
+🐛 TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════
+Backend won't start:
+  → Check port 5000 not in use: lsof -i :5000
+  → Kill if needed: kill -9 <PID>
+Device won't connect:
+  → Reconnect: adb kill-server && adb start-server
+  → Check: flutter devices
+App won't build:
+  → Clean: flutter clean
+  → Get deps: flutter pub get
+  → Run: flutter run
+No backend connection:
+  → Check URL in app_providers.dart
+  → Verify Flask running
+  → Try correct IP address
+  → Check firewall
+📦 BUILD FOR RELEASE
+════════════════════════════════════════════════════════════════════════════
+# APK (for direct installation)
+flutter build apk --release
+adb install build/app/outputs/flutter-app-release.apk
+# App Bundle (for Play Store)
+flutter build app-bundle --release
+✅ COMPLETE CHECKLIST
+════════════════════════════════════════════════════════════════════════════
+Terminal 1: [ ] Flask running on 5000
+Terminal 2: [ ] PostgreSQL started
+Terminal 3: [ ] Emulator/Device connected
+            [ ] Base URL configured
+            [ ] Dependencies installed (flutter pub get)
+            [ ] App running without errors
+Device:     [ ] Shows connection status
+            [ ] Can start monitoring
+            [ ] Predictions appear
+            [ ] Session saves
+            [ ] History shows data
+            [ ] Dark mode works
+🎯 QUICK TEST
+════════════════════════════════════════════════════════════════════════════
+1. Start Flask:
+   cd ~/backend && python app.py
+2. Start PostgreSQL:
+   brew services start postgresql
+3. Run app:
+   cd ~/Documents/Final_Project/HARmony_Frontend/harmony_app
+   flutter run
+4. In app:
+   - Start monitoring
+   - Move device (walk/run)
+   - See predictions
+   - Stop
+   - Check history
+Done! 🎉
+════════════════════════════════════════════════════════════════════════════
+Status: ✅ PRODUCTION READY
+Backend: Flask with PostgreSQL
+Frontend: Flutter 3.8+
+Date: March 7, 2026
+════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,138 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+
+import 'package:harmony_app/features/activity_recognition/models/activity_model.dart';
+import 'package:harmony_app/features/activity_recognition/models/backend_models.dart';
+import 'package:harmony_app/features/activity_recognition/services/activity_storage_service.dart';
+import 'package:harmony_app/features/activity_recognition/services/api_service.dart';
+import 'package:harmony_app/features/activity_recognition/services/backend_status_service.dart';
+import 'package:harmony_app/features/activity_recognition/services/sensor_service.dart';
+import 'package:harmony_app/shared/database/app_database.dart';
+import 'package:harmony_app/shared/services/model_inference_service.dart';
+
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+
+final sensorServiceProvider = Provider<SensorService>((ref) {
+  final s = SensorService();
+  ref.onDispose(() => s.dispose());
+  return s;
+});
+
+/// Provide the ApiService configured to point at Flask backend with PostgreSQL
+/// Use 10.0.2.2 for Android emulators to access localhost on the host machine
+final apiServiceProvider = Provider<ApiService>((ref) {
+  // PRODUCTION: Change to your Flask backend server IP/domain
+  // Example: 'http://your-server.com:8000' or 'http://192.168.1.100:8000'
+  String baseUrl = 'http://localhost:8000'; // Local development - UPDATED PORT
+
+  if (kDebugMode && Platform.isAndroid) {
+    // For physical Android devices on local network - use actual IP
+    baseUrl = 'http://192.168.8.106:8000'; // Your machine's IP address
+  }
+
+  if (kDebugMode) {
+    print('🔗 API Service configured to: $baseUrl');
+  }
+
+  return ApiService(baseUrl: baseUrl);
+});
+
+/// Backend status service for health checks and model info
+final backendStatusServiceProvider = Provider<BackendStatusService>((ref) {
+  String baseUrl = 'http://localhost:8000'; // New TFLite backend port
+
+  if (kDebugMode && Platform.isAndroid) {
+    baseUrl = 'http://192.168.8.106:8000'; // Your machine's IP address
+  }
+
+  if (kDebugMode) {
+    print('🔗 Backend Status Service configured to: $baseUrl');
+  }
+
+  return BackendStatusService(baseUrl: baseUrl);
+});
+
+/// Health check provider - fetches model status from /health endpoint
+final healthCheckProvider = FutureProvider<HealthCheckResponse>((ref) async {
+  final statusService = ref.watch(backendStatusServiceProvider);
+  return statusService.checkHealth();
+});
+
+/// Model info provider - fetches available labels from /model-info endpoint
+final modelInfoProvider = FutureProvider<ModelInfoResponse>((ref) async {
+  final statusService = ref.watch(backendStatusServiceProvider);
+  final modelInfo = await statusService.getModelInfo();
+
+  if (modelInfo != null) {
+    return modelInfo;
+  }
+
+  // Fallback to default labels if model info unavailable
+  return ModelInfoResponse(
+    modelName: 'har_model_fixed.tflite',
+    inputShape: [1, 120],
+    activityLabels: [
+      'Walking',
+      'Running',
+      'Sitting',
+      'Standing',
+      'Jogging',
+      'Cycling',
+      'Climbing',
+      'Descending'
+    ],
+    description: 'Fallback model info - server unavailable',
+    version: '1.0',
+    expectedFeatures: 120,
+  );
+});
+
+/// Activity labels provider - extracts labels from model info
+final activityLabelsProvider = FutureProvider<List<String>>((ref) async {
+  final modelInfo = await ref.watch(modelInfoProvider.future);
+  return modelInfo.activityLabels;
+});
+
+final activityStorageServiceProvider = Provider<ActivityStorageService>((ref) {
+  final db = ref.watch(appDatabaseProvider).value;
+  return ActivityStorageService(database: db);
+});
+
+final modelInferenceServiceProvider = Provider<ModelInferenceService>((ref) {
+  final s = ModelInferenceService();
+  ref.onDispose(() => s.dispose());
+  return s;
+});
+
+/// Remote Flask backend predictions with PostgreSQL storage
+/// Sensors must be started and will emit windows continuously
+final activityPredictionProvider = StreamProvider<ActivityModel>((ref) async* {
+  final sensorService = ref.watch(sensorServiceProvider);
+  final apiService = ref.watch(apiServiceProvider);
+
+  await for (final window in sensorService.inferenceReadyStream) {
+    try {
+      final prediction = await apiService.predictActivity(window);
+      yield prediction;
+    } catch (e) {
+      // Log error but continue receiving windows
+      if (kDebugMode) {
+        print('❌ Prediction error: $e');
+      }
+    }
+  }
+});
+
+final currentActivityProvider = StateProvider<ActivityModel>((ref) {
+  return ActivityModel(
+    activity: 'Unknown',
+    confidence: 0.0,
+    timestamp: DateTime.now().millisecondsSinceEpoch,
+  );
+});
+
+/// Local Floor database for offline sync and history
+final appDatabaseProvider = FutureProvider<AppDatabase>((ref) async {
+  return AppDatabase.open();
+});

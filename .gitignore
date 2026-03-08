@@ -1,0 +1,16 @@
+# Virtual environments
+venv*/
+env/
+.venv/
+HARmony_Backend/venv_deploy/
+
+# Build artifacts
+*.zip
+HARmony_Frontend/harmony_app.zip
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large dataset files (optional – you can keep them if using Git LFS)
+HARmony_ML_Core/data/

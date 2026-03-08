@@ -1,0 +1,49 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/ilavarasi/Documents/Final_Project/HARmony_Backend']
+INFO:     Uvicorn running on http://0.0.0.0:8004 (Press CTRL+C to quit)
+INFO:     Started reloader process [16456] using WatchFiles
+============================================================
+🚀 HARmony Backend Server (FastAPI)
+============================================================
+📁 Working directory: /home/ilavarasi/Documents/Final_Project/HARmony_Backend
+🐍 Python: 3.13.11
+============================================================
+📊 Available endpoints:
+   GET  http://localhost:8004/health
+   GET  http://localhost:8004/model-info
+   GET  http://localhost:8004/activities
+   POST http://localhost:8004/predict
+============================================================
+📚 Interactive API Documentation:
+   Swagger UI: http://127.0.0.1:8004/docs
+   ReDoc:      http://127.0.0.1:8004/redoc
+============================================================
+✅ Server starting... (Press Ctrl+C to stop)
+
+INFO:     Started server process [16458]
+INFO:     Waiting for application startup.
+/home/ilavarasi/Documents/Final_Project/HARmony_Backend/.venv/lib/python3.13/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator DecisionTreeClassifier from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/ilavarasi/Documents/Final_Project/HARmony_Backend/.venv/lib/python3.13/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator RandomForestClassifier from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+/home/ilavarasi/Documents/Final_Project/HARmony_Backend/.venv/lib/python3.13/site-packages/sklearn/base.py:463: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.8.0. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12899]
+📦 Loading Random Forest model...
+✅ Random Forest model loaded
+✅ Scaler loaded
+✅ Feature names loaded (561 features)
+✅ Activity labels loaded: ['WALKING', 'WALKING_UPSTAIRS', 'WALKING_DOWNSTAIRS', 'SITTING', 'STANDING', 'LAYING']
+🎉 All models loaded successfully!
+🤖 Model type: RandomForestClassifier
+🔢 Model expects 561 features
+✅ HAR Model loaded successfully at startup.
+👋 Shutting down HARmony API.
+INFO:     Stopping reloader process [16456]
