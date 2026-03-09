@@ -54,12 +54,11 @@ CREATE TABLE IF NOT EXISTS harmony.activities (
 
 CREATE TABLE IF NOT EXISTS harmony.sessions (
     id SERIAL PRIMARY KEY,
+    session_id VARCHAR(255) UNIQUE,
     user_id VARCHAR(255),
     start_time TIMESTAMP,
     end_time TIMESTAMP,
-    duration_minutes INT,
-    activity_breakdown JSONB,
-    active_minutes INT,
+    summary TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 class SensorData(BaseModel):
@@ -50,3 +50,23 @@ class ModelInfoResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str = Field(..., example="Missing sensor_data in request")
     status_code: int = Field(..., example=400)
+
+class StoredActivity(BaseModel):
+    id: int
+    user_id: str
+    activity_name: str
+    confidence: float
+    timestamp: datetime
+
+class ActivitiesResponse(BaseModel):
+    activities: List[StoredActivity]
+    count: int
+    status: str = "success"
+
+class SessionData(BaseModel):
+    session_id: str
+    user_id: str = "anonymous"
+    start_time: int  # timestamp in ms
+    end_time: int    # timestamp in ms
+    activities: List[Dict[str, Any]]  # list of activity predictions
+    summary: Optional[str] = None

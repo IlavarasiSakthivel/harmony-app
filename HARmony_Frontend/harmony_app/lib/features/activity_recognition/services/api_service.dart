@@ -137,15 +137,83 @@ class ApiService {
     }
   }
 
-  /// Legacy: Fetch remote sessions (not supported on new backend)
+  /// Fetch remote sessions from backend
   Future<List<ActivitySession>> fetchRemoteSessions(
       {String? userId, String? date}) async {
-    return [];
+    try {
+      final uri = Uri.parse('$baseUrl/sessions').replace(queryParameters: {
+        if (userId != null) 'user_id': userId,
+        if (date != null) 'date': date,
+      });
+
+      final resp = await _httpClient.get(uri).timeout(AppConfig.connectionTimeout);
+      
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final sessionsData = data['sessions'] as List<dynamic>;
+        
+        return sessionsData.map((s) {
+          final activities = (s['activities'] as List<dynamic>).map((a) => 
+            ActivityPrediction(
+              activity: a['activity'] as String,
+              confidence: (a['confidence'] as num).toDouble(),
+              timestamp: DateTime.fromMillisecondsSinceEpoch(a['timestamp'] as int),
+            )
+          ).toList();
+          
+          return ActivitySession(
+            id: s['session_id'] as String,
+            startTime: DateTime.fromMillisecondsSinceEpoch(s['start_time'] as int),
+            endTime: DateTime.fromMillisecondsSinceEpoch(s['end_time'] as int),
+            predictions: activities,
+            summary: s['summary'] as String?,
+          );
+        }).toList();
+      }
+      
+      if (kDebugMode) print('ApiService.fetchRemoteSessions failed: ${resp.statusCode}');
+      return [];
+    } catch (e) {
+      if (kDebugMode) print('ApiService.fetchRemoteSessions error: $e');
+      return [];
+    }
   }
 
-  /// Legacy: Save session to remote database (not supported on new backend)
+  /// Save session to remote database
   Future<bool> saveSessionRemote(ActivitySession session) async {
-    return false;
+    try {
+      final uri = Uri.parse('$baseUrl/sessions');
+      
+      final sessionData = {
+        'session_id': session.id,
+        'user_id': 'anonymous',  // Could be made configurable
+        'start_time': session.startTime.millisecondsSinceEpoch,
+        'end_time': session.endTime.millisecondsSinceEpoch,
+        'activities': session.predictions.map((p) => {
+          'activity': p.activity,
+          'confidence': p.confidence,
+          'timestamp': p.timestamp.millisecondsSinceEpoch,
+        }).toList(),
+        'summary': session.summary,
+      };
+
+      final resp = await _httpClient.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(sessionData),
+      ).timeout(AppConfig.connectionTimeout);
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        return data['status'] == 'success';
+      }
+      
+      if (kDebugMode) print('ApiService.saveSessionRemote failed: ${resp.statusCode}');
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('ApiService.saveSessionRemote error: $e');
+      return false;
+    }
   }
 
   /// Legacy: Fetch coach insights (not supported on new backend)

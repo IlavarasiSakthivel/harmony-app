@@ -43,8 +43,10 @@ class HARModel:
             )
 
         import tensorflow as tf
+        from ai_edge_litert.interpreter import Interpreter as LiteRTInterpreter
 
-        interpreter = tf.lite.Interpreter(model_path=tflite_path)
+        # Use LiteRT interpreter which supports more ops
+        interpreter = LiteRTInterpreter(model_path=tflite_path)
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
 

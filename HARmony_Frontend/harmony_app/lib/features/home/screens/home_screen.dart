@@ -7,6 +7,7 @@ import 'package:harmony_app/shared/widgets/theme_provider.dart' show themeProvid
 import 'package:harmony_app/shared/widgets/activity_card.dart';
 import 'package:harmony_app/core/app_providers.dart';
 import 'package:harmony_app/features/activity_recognition/models/sensor_window.dart';
+import 'package:harmony_app/features/activity_recognition/models/activity_model.dart';
 import 'package:harmony_app/shared/widgets/tailwind/tw_colors.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -102,29 +103,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     );
   }
 
-    // Test prediction with the configured ApiService
-    Future<void> _makeTestPrediction() async {
-    _showSnackBar('🔄 Requesting prediction from backend...', Colors.blue);
-    try {
-      // Create a dummy sensor window for connection test
-      final dummySensorWindow = SensorWindow(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        accelerometer: [const [0.0, 0.0, 0.0]], // Simple 3-axis dummy
-        gyroscope: [const [0.0, 0.0, 0.0]],
-      );
-      final activityModel = await ref.read(apiServiceProvider).predictActivity(dummySensorWindow);
-
-      setState(() {
-        _currentActivity = activityModel.activity;
-        _confidence = activityModel.confidence;
-      });
-
-      _showSnackBar('✅ Prediction successful: ${activityModel.activity}', TWColors.emerald500);
-    } catch (e) {
-      _showSnackBar('❌ Prediction failed: $e', TWColors.red500);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = ref.watch(themeProviderProvider);
@@ -132,6 +110,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final cardColor = themeProvider.cardColor;
     final textPrimary = themeProvider.textPrimary;
     final textSecondary = themeProvider.textSecondary;
+
+    // Listen to activity predictions
+    ref.listen<AsyncValue<ActivityModel>>(activityPredictionProvider, (previous, next) {
+      next.when(
+        data: (activityModel) {
+          setState(() {
+            _currentActivity = activityModel.activity;
+            _confidence = activityModel.confidence;
+          });
+        },
+        error: (error, stackTrace) {
+          // Keep current values or set to unknown
+          setState(() {
+            _currentActivity = 'Unknown';
+            _confidence = 0.0;
+          });
+        },
+        loading: () {
+          // Keep current values
+        },
+      );
+    });
 
     return Scaffold(
       key: _scaffoldKey,
@@ -354,56 +354,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isConnecting ? null : _checkBackendConnection,
-                    icon: _isConnecting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Icon(
-                            _isBackendConnected ? Icons.refresh : Icons.wifi,
-                            size: 18,
-                          ),
-                    label: Text(_isConnecting
-                        ? 'Connecting...'
-                        : (_isBackendConnected ? 'Reconnect' : 'Connect')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isBackendConnected
-                          ? TWColors.blue500
-                          : TWColors.emerald500,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+            ElevatedButton.icon(
+              onPressed: _isConnecting ? null : _checkBackendConnection,
+              icon: _isConnecting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
+                    )
+                  : Icon(
+                      _isBackendConnected ? Icons.refresh : Icons.wifi,
+                      size: 18,
                     ),
-                  ),
+              label: Text(_isConnecting
+                  ? 'Connecting...'
+                  : (_isBackendConnected ? 'Reconnect' : 'Connect')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isBackendConnected
+                    ? TWColors.blue500
+                    : TWColors.emerald500,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _makeTestPrediction,
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: const Text('Test Prediction'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: TWColors.purple500,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
@@ -1052,16 +1030,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 () {
               Navigator.pop(context);
               Navigator.pushNamed(context, '/futuristic');
-            },
-          ),
-          _buildDrawerItem(
-            context,
-            Icons.school,
-            'Academic / Viva',
-            themeProvider.textPrimary,
-                () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/academic');
             },
           ),
         ],

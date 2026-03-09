@@ -75,31 +75,34 @@ class PrivacyPolicyScreen extends ConsumerWidget {
             _buildSection(
               themeProvider,
               'Information We Collect',
-              'HARmony is designed with privacy in mind. We collect minimal information:\n\n'
+              'HARmony collects and processes information to provide activity recognition services:\n\n'
               '• Sensor Data: Accelerometer and gyroscope data for activity recognition\n'
               '• Activity Data: Recognized activities (walking, running, sitting, standing)\n'
-              '• Device Information: Basic device information for app functionality\n\n'
-              'All data processing happens locally on your device. We do not collect personal information such as your name, email, or location.',
+              '• Device Information: Basic device information for app functionality\n'
+              '• User ID: Anonymous identifier for session management\n\n'
+              'Sensor data is sent to our secure backend server for processing. We do not collect personal information such as your name, email, or precise location.',
             ),
 
             _buildSection(
               themeProvider,
               'How We Use Your Information',
-              'We use the collected information solely for:\n\n'
-              '• Activity Recognition: To identify and classify your physical activities\n'
-              '• App Functionality: To provide real-time activity monitoring features\n'
-              '• Local Storage: To maintain your activity history on your device\n\n'
-              'We do not sell, trade, or share your data with third parties.',
+              'We use the collected information for:\n\n'
+              '• Activity Recognition: To identify and classify your physical activities using AI models\n'
+              '• App Functionality: To provide real-time activity monitoring and analytics\n'
+              '• Data Storage: To maintain your activity history for personal insights\n'
+              '• Service Improvement: To improve our AI models and app performance\n\n'
+              'All processing is done securely on our servers. We do not sell, trade, or share your data with third parties.',
             ),
 
             _buildSection(
               themeProvider,
-              'Data Storage',
-              'All activity data is stored locally on your device:\n\n'
-              '• No cloud storage: Your data never leaves your device\n'
-              '• Local database: Activity history is stored in device storage\n'
-              '• User control: You can clear your data at any time through app settings\n\n'
-              'We do not have access to your stored data.',
+              'Data Storage and Security',
+              'Your data is stored securely:\n\n'
+              '• Backend Storage: Activity data is stored on our secure PostgreSQL database\n'
+              '• Local Cache: Recent data may be cached locally for offline functionality\n'
+              '• Encryption: All data transmission uses HTTPS encryption\n'
+              '• Access Control: Only you can access your data through the app\n\n'
+              'We implement industry-standard security measures to protect your data.',
             ),
 
             _buildSection(
@@ -108,8 +111,8 @@ class PrivacyPolicyScreen extends ConsumerWidget {
               'HARmony requires the following permissions:\n\n'
               '• Sensors: Access to accelerometer and gyroscope for activity detection\n'
               '• Activity Recognition: Permission to detect physical activities (Android 10+)\n'
-              '• Internet: Optional, only if you choose to connect to a backend server\n\n'
-              'All permissions are used exclusively for app functionality.',
+              '• Internet: Required for backend processing and cloud features\n\n'
+              'All permissions are essential for the app\'s core functionality.',
             ),
 
             _buildSection(
@@ -117,10 +120,11 @@ class PrivacyPolicyScreen extends ConsumerWidget {
               'Your Rights',
               'You have the right to:\n\n'
               '• Access your data: View all stored activity data within the app\n'
-              '• Delete your data: Clear all activity history at any time\n'
+              '• Delete your data: Request deletion of all your data from our servers\n'
+              '• Data portability: Export your activity data in standard formats\n'
               '• Control permissions: Grant or revoke app permissions through device settings\n'
-              '• Uninstall: Remove the app and all associated data by uninstalling\n\n'
-              'Since all data is stored locally, you have complete control.',
+              '• Contact us: Reach out for any privacy concerns\n\n'
+              'You can manage your data through the app settings or contact us directly.',
             ),
 
             // Data Controls Section
@@ -167,7 +171,7 @@ class PrivacyPolicyScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'You can delete all locally stored activity sessions and sensor snapshots at any time. This action cannot be undone.',
+                    'You can request deletion of all your activity data from our servers at any time. Local cache data can be cleared through app settings. This action cannot be undone.',
                     style: TextStyle(
                       fontSize: 15,
                       height: 1.6,
@@ -182,7 +186,7 @@ class PrivacyPolicyScreen extends ConsumerWidget {
                         builder: (context) => AlertDialog(
                           title: const Text('Delete all data?'),
                           content: const Text(
-                            'This will remove all local activity history and sensor snapshots. This action cannot be undone.',
+                            'This will request deletion of all your data from our servers and clear local cache. This action cannot be undone.',
                           ),
                           actions: [
                             TextButton(

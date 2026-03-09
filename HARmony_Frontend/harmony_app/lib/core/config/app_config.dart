@@ -1,10 +1,18 @@
 /// App Configuration - Backend URLs, timeouts, and settings
+import 'dart:io' show Platform;
+
 class AppConfig {
-  // Backend Configuration - Using ADB reverse port forwarding over USB
-  // adb reverse tcp:8000 tcp:8000 tunnels device:8000 → host:8000
-  static String backendBaseUrl = 'http://localhost:8000';
+  // Backend Configuration
+  static String get backendBaseUrl {
+    if (Platform.isAndroid) {
+      // For Android emulator use 10.0.2.2, for physical device use host IP
+      return 'http://192.168.8.106:8000';  // Host machine IP
+    } else {
+      return 'http://localhost:8000';
+    }
+  }
   // NOTE: backend endpoints are mounted at root; do not append '/api' here
-  static String apiBaseUrl = backendBaseUrl;
+  static String get apiBaseUrl => backendBaseUrl;
   
   // API Endpoints
   static const String healthCheckEndpoint = '/health';

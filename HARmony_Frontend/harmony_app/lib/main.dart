@@ -18,7 +18,6 @@ import 'package:harmony_app/features/settings/screens/privacy_dashboard_screen.d
 import 'package:harmony_app/features/settings/screens/settings_screen.dart';
 import 'package:harmony_app/features/support/screens/help_support_screen.dart';
 import 'package:harmony_app/features/timeline/screens/timeline_screen.dart';
-import 'package:harmony_app/features/academic/screens/academic_screen.dart';
 import 'package:harmony_app/shared/widgets/theme_provider.dart' show themeModeProvider, ThemeModeOption;
 
 void main() {
@@ -62,7 +61,6 @@ class HARmonyApp extends ConsumerWidget {
         '/help': (context) => const HelpSupportScreen(),
         '/terms': (context) => const TermsOfServiceScreen(),
         '/privacy-policy': (context) => const PrivacyPolicyScreen(),
-        '/academic': (context) => const AcademicScreen(),
       },
     );
   }
