@@ -49,11 +49,12 @@ flutter:
   assets:
     - assets/models/
     - assets/config/
+    - assets/icon/
     # - assets/har_model.tflite  # Uncomment when you add the model file
 
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/icon/icon.png"
+  image_path: "assets/icon/Logo_with_border.png"
   adaptive_icon_background: "#3B82F6"
-  adaptive_icon_foreground: "assets/icon/icon.png"
+  adaptive_icon_foreground: "assets/icon/Logo_with_border.png"

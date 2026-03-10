@@ -155,29 +155,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'HAR',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: TWColors.blue500,
-                            letterSpacing: 0.5,
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
+                          ),
+                          image: const DecorationImage(
+                            image: AssetImage('assets/icon/Logo.jpeg'),
+                            fit: BoxFit.cover,
                           ),
                         ),
-                        TextSpan(
-                          text: 'mony',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: TWColors.emerald500,
-                            letterSpacing: 0.5,
-                          ),
+                      ),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'HAR',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: TWColors.blue500,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'mony',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: TWColors.emerald500,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -354,32 +374,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _isConnecting ? null : _checkBackendConnection,
-              icon: _isConnecting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isConnecting ? null : _checkBackendConnection,
+                icon: _isConnecting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        _isBackendConnected ? Icons.refresh : Icons.wifi,
+                        size: 18,
                       ),
-                    )
-                  : Icon(
-                      _isBackendConnected ? Icons.refresh : Icons.wifi,
-                      size: 18,
-                    ),
-              label: Text(_isConnecting
-                  ? 'Connecting...'
-                  : (_isBackendConnected ? 'Reconnect' : 'Connect')),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isBackendConnected
-                    ? TWColors.blue500
-                    : TWColors.emerald500,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                label: Text(_isConnecting
+                    ? 'Connecting...'
+                    : (_isBackendConnected ? 'Reconnect' : 'Connect')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isBackendConnected
+                      ? TWColors.blue500
+                      : TWColors.emerald500,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
