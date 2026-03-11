@@ -18,6 +18,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _highAccuracy = true;
   bool _saveHistory = true;
   bool _vibrationFeedback = true;
+  bool _privacyMode = false;  // NEW: Privacy mode toggle
   double _samplingRate = 50.0;
   double _confidenceThreshold = 0.7;
 
@@ -35,7 +36,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() {
       _highAccuracy = settings['highAccuracy'] ?? true;
       _saveHistory = settings['saveHistory'] ?? true;
-      _vibrationFeedback = settings['vibrationFeedback'] ?? true; // Assuming default true
+      _vibrationFeedback = settings['vibrationFeedback'] ?? true;
+      _privacyMode = settings['privacyMode'] ?? false;  // NEW: Load privacy mode
       _samplingRate = settings['samplingRate'] ?? 50.0;
       _confidenceThreshold = settings['confidenceThreshold'] ?? 0.7;
     });
@@ -240,6 +242,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               iconBgColor: themeProvider.isDarkMode ? TWColors.blue900 : TWColors.blue100,
               title: 'Data Management',
               children: [
+                _buildSettingSwitch(
+                  themeProvider: themeProvider,
+                  title: 'Privacy Mode',
+                  subtitle: 'Disable cloud sync - all processing offline only',
+                  value: _privacyMode,
+                  onChanged: (value) {
+                    setState(() => _privacyMode = value);
+                    _saveSetting('privacyMode', value);
+                    _showSnackbar(
+                      context,
+                      value
+                          ? 'Privacy mode enabled - offline only'
+                          : 'Privacy mode disabled - cloud sync enabled',
+                      color: value ? TWColors.emerald500 : TWColors.blue500,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
                 _buildSettingButton(
                   themeProvider: themeProvider,
                   icon: Icons.delete,

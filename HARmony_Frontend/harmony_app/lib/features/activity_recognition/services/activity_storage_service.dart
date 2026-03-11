@@ -36,6 +36,171 @@ class ActivityStorageService {
     return sb.toString();
   }
 
+  /// Builds a PDF-friendly text report from all sessions (can be converted to PDF with a library)
+  Future<String> exportSessionsAsPdfReport() async {
+    final sessions = await getAllSessions();
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+    final sb = StringBuffer();
+    
+    final reportDate = DateTime.now();
+    sb.writeln('═' * 80);
+    sb.writeln('HARmony Activity Recognition - Comprehensive Report');
+    sb.writeln('Generated: ${dateFormat.format(reportDate)}');
+    sb.writeln('═' * 80);
+    sb.writeln('');
+    
+    // Overall Statistics
+    sb.writeln('OVERALL STATISTICS');
+    sb.writeln('─' * 80);
+    sb.writeln('Total Sessions: ${sessions.length}');
+    
+    final totalDuration = sessions.fold<Duration>(Duration.zero, (sum, s) => sum + s.duration);
+    sb.writeln('Total Activity Duration: ${totalDuration.inHours}h ${totalDuration.inMinutes % 60}m');
+    
+    final totalPredictions = sessions.fold<int>(0, (sum, s) => sum + s.predictions.length);
+    sb.writeln('Total Predictions: $totalPredictions');
+    
+    // Activity Distribution
+    final activityCounts = <String, int>{};
+    for (final session in sessions) {
+      for (final pred in session.predictions) {
+        activityCounts[pred.activity] = (activityCounts[pred.activity] ?? 0) + 1;
+      }
+    }
+    
+    sb.writeln('');
+    sb.writeln('ACTIVITY DISTRIBUTION');
+    sb.writeln('─' * 80);
+    for (final entry in activityCounts.entries) {
+      final percentage = totalPredictions > 0 ? (entry.value / totalPredictions * 100) : 0;
+      sb.writeln('${entry.key.padRight(20)} ${entry.value.toString().padLeft(5)} predictions (${percentage.toStringAsFixed(1)}%)');
+    }
+    
+    sb.writeln('');
+    sb.writeln('DETAILED SESSION REPORTS');
+    sb.writeln('═' * 80);
+    
+    for (int i = 0; i < sessions.length; i++) {
+      final session = sessions[i];
+      sb.writeln('');
+      sb.writeln('Session ${i + 1}: ${session.summary ?? "Mixed Activities"}');
+      sb.writeln('─' * 80);
+      sb.writeln('Session ID: ${session.id}');
+      sb.writeln('Start Time: ${dateFormat.format(session.startTime)}');
+      sb.writeln('End Time: ${dateFormat.format(session.endTime)}');
+      sb.writeln('Duration: ${session.duration.inMinutes}m ${session.duration.inSeconds % 60}s');
+      sb.writeln('Predictions: ${session.predictions.length}');
+      sb.writeln('');
+      
+      if (session.predictions.isNotEmpty) {
+        sb.writeln('Activity Timeline:');
+        double avgConfidence = session.predictions.fold(0.0, (sum, p) => sum + p.confidence) / session.predictions.length;
+        sb.writeln('Average Confidence: ${(avgConfidence * 100).toStringAsFixed(1)}%');
+        
+        // Show first, middle, and last predictions as samples
+        if (session.predictions.length <= 5) {
+          for (final pred in session.predictions) {
+            sb.writeln('  • ${dateFormat.format(pred.timestamp)} - ${pred.activity} (${(pred.confidence * 100).toStringAsFixed(0)}%)');
+          }
+        } else {
+          // Show first 2, skipped middle, last 2
+          for (int j = 0; j < 2; j++) {
+            final pred = session.predictions[j];
+            sb.writeln('  • ${dateFormat.format(pred.timestamp)} - ${pred.activity} (${(pred.confidence * 100).toStringAsFixed(0)}%)');
+          }
+          sb.writeln('  ... [${session.predictions.length - 4} more predictions] ...');
+          for (int j = session.predictions.length - 2; j < session.predictions.length; j++) {
+            final pred = session.predictions[j];
+            sb.writeln('  • ${dateFormat.format(pred.timestamp)} - ${pred.activity} (${(pred.confidence * 100).toStringAsFixed(0)}%)');
+          }
+        }
+      }
+      sb.writeln('');
+    }
+    
+    sb.writeln('═' * 80);
+    sb.writeln('End of Report');
+    sb.writeln('═' * 80);
+    
+    return sb.toString();
+  }
+
+  /// Export a single session as PDF-friendly text report
+  Future<String> exportSessionAsPdfReport(String sessionId) async {
+    final sessions = await getAllSessions();
+    final session = sessions.firstWhere((s) => s.id == sessionId, orElse: () => ActivitySession(
+      id: '',
+      startTime: DateTime.now(),
+      endTime: DateTime.now(),
+      predictions: [],
+    ));
+    
+    if (session.id.isEmpty) {
+      throw Exception('Session not found: $sessionId');
+    }
+    
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+    final sb = StringBuffer();
+    
+    sb.writeln('═' * 80);
+    sb.writeln('HARmony Activity Recognition - Session Report');
+    sb.writeln('═' * 80);
+    sb.writeln('');
+    sb.writeln('SESSION DETAILS');
+    sb.writeln('─' * 80);
+    sb.writeln('Session ID: ${session.id}');
+    sb.writeln('Activity Type: ${session.summary ?? "Mixed"}');
+    sb.writeln('Start Time: ${dateFormat.format(session.startTime)}');
+    sb.writeln('End Time: ${dateFormat.format(session.endTime)}');
+    sb.writeln('Duration: ${session.duration.inMinutes}m ${session.duration.inSeconds % 60}s');
+    sb.writeln('Total Predictions: ${session.predictions.length}');
+    
+    if (session.predictions.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('STATISTICS');
+      sb.writeln('─' * 80);
+      
+      double avgConfidence = session.predictions.fold(0.0, (sum, p) => sum + p.confidence) / session.predictions.length;
+      sb.writeln('Average Confidence: ${(avgConfidence * 100).toStringAsFixed(1)}%');
+      
+      double maxConfidence = session.predictions.map((p) => p.confidence).reduce((a, b) => a > b ? a : b);
+      sb.writeln('Max Confidence: ${(maxConfidence * 100).toStringAsFixed(1)}%');
+      
+      double minConfidence = session.predictions.map((p) => p.confidence).reduce((a, b) => a < b ? a : b);
+      sb.writeln('Min Confidence: ${(minConfidence * 100).toStringAsFixed(1)}%');
+      
+      // Activity breakdown
+      final activityCounts = <String, int>{};
+      for (final pred in session.predictions) {
+        activityCounts[pred.activity] = (activityCounts[pred.activity] ?? 0) + 1;
+      }
+      
+      sb.writeln('');
+      sb.writeln('Activity Distribution:');
+      for (final entry in activityCounts.entries) {
+        final percentage = (entry.value / session.predictions.length * 100);
+        sb.writeln('  ${entry.key.padRight(20)} ${entry.value.toString().padLeft(5)} (${percentage.toStringAsFixed(1)}%)');
+      }
+      
+      sb.writeln('');
+      sb.writeln('PREDICTION TIMELINE');
+      sb.writeln('─' * 80);
+      
+      for (int i = 0; i < session.predictions.length; i++) {
+        final pred = session.predictions[i];
+        final timeOffset = pred.timestamp.difference(session.startTime);
+        sb.writeln('[${timeOffset.inSeconds}s] ${pred.activity.padRight(20)} ${(pred.confidence * 100).toStringAsFixed(1)}%');
+      }
+    }
+    
+    sb.writeln('');
+    sb.writeln('═' * 80);
+    sb.writeln('Generated: ${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())}');
+    sb.writeln('═' * 80);
+    
+    return sb.toString();
+  }
+
   Future<List<ActivitySession>> getAllSessions() async {
     if (_database != null) {
       final sessionEntities = await _database!.sessionDao.getAllSessions();

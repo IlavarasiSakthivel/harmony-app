@@ -60,6 +60,26 @@ final healthCheckProvider = FutureProvider<HealthCheckResponse>((ref) async {
   return statusService.checkHealth();
 });
 
+/// Backend connection status stream provider - broadcasts connection state changes
+final backendConnectionStatusProvider =
+    StreamProvider<BackendConnectionStatus>((ref) async* {
+  final statusService = ref.watch(backendStatusServiceProvider);
+  
+  // Start periodic health checks when this provider is first watched
+  statusService.startPeriodicHealthChecks();
+  ref.onDispose(() {
+    statusService.stopPeriodicHealthChecks();
+  });
+  
+  // Emit current status
+  yield statusService.currentStatus;
+  
+  // Then emit all status changes
+  await for (final status in statusService.connectionStatusStream) {
+    yield status;
+  }
+});
+
 /// Model info provider - fetches available labels from /model-info endpoint
 final modelInfoProvider = FutureProvider<ModelInfoResponse>((ref) async {
   final statusService = ref.watch(backendStatusServiceProvider);

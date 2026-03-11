@@ -1,0 +1,35 @@
+nohup: ignoring input
+INFO:     Started server process [187626]
+INFO:     Waiting for application startup.
+2026-03-12 00:55:20.430850: I tensorflow/core/util/port.cc:111] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-03-12 00:55:20.451205: I tensorflow/tsl/cuda/cudart_stub.cc:28] Could not find cuda drivers on your machine, GPU will not be used.
+2026-03-12 00:55:20.490594: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2026-03-12 00:55:20.490644: E tensorflow/compiler/xla/stream_executor/cuda/cuda_fft.cc:609] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2026-03-12 00:55:20.490684: E tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:1518] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2026-03-12 00:55:20.498088: I tensorflow/tsl/cuda/cudart_stub.cc:28] Could not find cuda drivers on your machine, GPU will not be used.
+2026-03-12 00:55:20.498296: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-12 00:55:21.490168: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+INFO: Created TensorFlow Lite delegate for select TF ops.
+INFO: TfLiteFlexDelegate delegate: 4 nodes delegated out of 29 nodes with 3 partitions.
+
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8000): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+============================================================
+HARmony FastAPI Backend Server Starting
+============================================================
+Python: 3.10.12 (main, Jan 26 2026, 14:55:28) [GCC 11.4.0]
+Working Directory: /home/ilavarasi/Documents/Final_Project/HARmony/HARmony_Backend
+
+🌐 API Documentation (Swagger UI): http://127.0.0.1:8000/docs
+🌐 API Documentation (ReDoc):     http://127.0.0.1:8000/redoc
+
+✅ Server starting... (Press Ctrl+C to stop)
+🎉 TFLite model loaded successfully!
+🤖 Model type: TFLite (input: 40x3)
+🔢 Send exactly 120 floats
+✅ HAR Model loaded successfully at startup.
+👋 Shutting down HARmony API.

@@ -122,7 +122,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Future<void> _deleteSession(String sessionId, ThemeProvider themeProvider) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(
           'Delete Session',
           style: TextStyle(color: themeProvider.textPrimary),
@@ -130,12 +130,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         content: const Text('Are you sure you want to delete this session?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
                 final activityStorageService = ref.read(activityStorageServiceProvider);
                 await activityStorageService.deleteSession(sessionId);
@@ -271,6 +271,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             session: _sessions[index],
                             themeProvider: themeProvider,
                             onDelete: () => _deleteSession(_sessions[index].id, themeProvider),
+                            onExportPdf: _exportSessionAsPdf,
+                            onExportCsv: _exportSessionAsCsv,
                           ),
                         )),
             ),
@@ -586,17 +588,100 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       if (mounted) setState(() => _isExporting = false);
     }
   }
+
+  /// Export single session as PDF (text format)
+  Future<void> _exportSessionAsPdf(ActivitySession session) async {
+    try {
+      final activityStorageService = ref.read(activityStorageServiceProvider);
+      final pdfContent = await activityStorageService.exportSessionAsPdfReport(session.id);
+      
+      final dir = await getTemporaryDirectory();
+      final fileName = 'harmony_session_${session.id}_${DateTime.now().millisecondsSinceEpoch}.txt';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(pdfContent);
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'HARmony Session Report',
+        text: 'Activity session report from HARmony app.',
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session exported as PDF report'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Export single session as CSV
+  Future<void> _exportSessionAsCsv(ActivitySession session) async {
+    try {
+      final sb = StringBuffer();
+      sb.writeln('Activity,Confidence,Timestamp');
+      
+      final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
+      for (final pred in session.predictions) {
+        sb.writeln('"${pred.activity}",${pred.confidence.toStringAsFixed(4)},"${dateFormat.format(pred.timestamp)}"');
+      }
+      
+      final dir = await getTemporaryDirectory();
+      final fileName = 'harmony_session_${session.id}_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(sb.toString());
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: '${session.summary ?? "Activity"} Session - HARmony',
+        text: 'Activity recognition session export from HARmony app.',
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session exported as CSV'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _SessionCard extends StatelessWidget {
   final ActivitySession session;
   final ThemeProvider themeProvider;
   final VoidCallback onDelete;
+  final Function(ActivitySession) onExportPdf;
+  final Function(ActivitySession) onExportCsv;
 
   const _SessionCard({
     required this.session,
     required this.themeProvider,
     required this.onDelete,
+    required this.onExportPdf,
+    required this.onExportCsv,
   });
 
   @override
@@ -635,10 +720,32 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              PopupMenuButton(
+              PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: themeProvider.textSecondary),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    value: 'pdf',
+                    child: Row(
+                      children: [
+                        Icon(Icons.picture_as_pdf, size: 18, color: TWColors.red500),
+                        const SizedBox(width: 8),
+                        const Text('Export as PDF'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'csv',
+                    child: Row(
+                      children: [
+                        Icon(Icons.table_chart, size: 18, color: TWColors.blue500),
+                        const SizedBox(width: 8),
+                        const Text('Export as CSV'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem<String>(
+                    value: 'delete',
                     child: Row(
                       children: [
                         Icon(Icons.delete, size: 18, color: Colors.red),
@@ -646,9 +753,17 @@ class _SessionCard extends StatelessWidget {
                         Text('Delete Session', style: TextStyle(color: themeProvider.textPrimary)),
                       ],
                     ),
-                    onTap: onDelete,
                   ),
                 ],
+                onSelected: (value) {
+                  if (value == 'pdf') {
+                    onExportPdf(session);
+                  } else if (value == 'csv') {
+                    onExportCsv(session);
+                  } else if (value == 'delete') {
+                    onDelete();
+                  }
+                },
               ),
             ],
           ),

@@ -112,6 +112,48 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return 0.0;
   }
 
+  /// Calculate daily activity score from 0-100 based on activity minutes and consistency
+  int _calculateDailyScore() {
+    final today = DateTime.now();
+    final todayKey = DateFormat('yyyy-MM-dd').format(today);
+    
+    // Get predictions for today
+    final todayPredictions = flattenPredictions(_sessions)
+        .where((p) => DateFormat('yyyy-MM-dd').format(p.timestamp) == todayKey)
+        .toList();
+    
+    if (todayPredictions.isEmpty) return 0;
+    
+    // Calculate metrics
+    int score = 0;
+    
+    // 1. Activity duration (max 40 points for ~60 minutes)
+    final activeMinutes = estimateActiveMinutesFromPredictions(todayPredictions);
+    score += (activeMinutes / 60 * 40).clamp(0, 40).toInt();
+    
+    // 2. Activity variety (max 30 points)
+    final activities = <String>{};
+    for (final pred in todayPredictions) {
+      if (!['Sitting', 'Standing', 'Laying'].contains(pred.activity)) {
+        activities.add(pred.activity);
+      }
+    }
+    score += (activities.length * 10).clamp(0, 30);
+    
+    // 3. Consistency (max 20 points - if session started and completed)
+    final hasMorningSessions = todayPredictions.any((p) => p.timestamp.hour < 12);
+    final hasEveningSessions = todayPredictions.any((p) => p.timestamp.hour >= 12);
+    if (hasMorningSessions && hasEveningSessions) score += 20;
+    
+    // 4. Average confidence (max 10 points)
+    if (todayPredictions.isNotEmpty) {
+      final avgConfidence = todayPredictions.fold(0.0, (sum, p) => sum + p.confidence) / todayPredictions.length;
+      score += (avgConfidence * 10).toInt();
+    }
+    
+    return score.clamp(0, 100);
+  }
+
   Future<void> _exportSummary() async {
     final dates = _rangeDates();
     final activeByDay = _activeMinutesByDay();
@@ -208,41 +250,79 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildSummaryCards(ThemeProvider theme, double total, double delta) {
     final deltaColor = delta >= 0 ? TWColors.emerald500 : TWColors.red500;
     final deltaLabel = delta >= 0 ? 'up' : 'down';
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Total Active Minutes', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
-                  const SizedBox(height: 6),
-                  Text(total.toStringAsFixed(1), style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)),
-                ],
+    final dailyScore = _calculateDailyScore();
+    
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 200,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Daily Score', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Text('$dailyScore/100', style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: dailyScore / 100,
+                      backgroundColor: theme.isDarkMode ? TWColors.slate700 : TWColors.slate200,
+                      valueColor: AlwaysStoppedAnimation<Color>(_getScoreColor(dailyScore)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Trend vs Previous', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
-                  const SizedBox(height: 6),
-                  Text('${delta.abs().toStringAsFixed(1)} min $deltaLabel', style: TextStyle(color: deltaColor, fontSize: 18, fontWeight: FontWeight.w700)),
-                ],
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 200,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Total Active Minutes', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Text(total.toStringAsFixed(1), style: TextStyle(color: theme.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 200,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Trend vs Previous', style: TextStyle(color: theme.textSecondary, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Text('${delta.abs().toStringAsFixed(1)} min $deltaLabel', style: TextStyle(color: deltaColor, fontSize: 18, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Get color based on activity score
+  Color _getScoreColor(int score) {
+    if (score >= 80) return TWColors.emerald500;
+    if (score >= 60) return TWColors.amber500;
+    if (score >= 40) return TWColors.orange500;
+    return TWColors.red500;
   }
 
   Widget _buildBarChart(ThemeProvider theme, List<DateTime> dates, List<double> values) {

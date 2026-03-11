@@ -12,6 +12,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:harmony_app/core/services/backend_config_service.dart';
 import 'package:harmony_app/features/activity_recognition/widgets/sensor_buffering_progress_widget.dart';
+import 'package:harmony_app/features/activity_recognition/widgets/connection_status_indicator.dart';
 
 class RealtimeRecognitionScreen extends ConsumerStatefulWidget {
   const RealtimeRecognitionScreen({Key? key}) : super(key: key);
@@ -1035,12 +1036,8 @@ class _RealtimeRecognitionScreenState extends ConsumerState<RealtimeRecognitionS
               ),
             ),
             const Spacer(),
-            // Backend Status Icon
-            Icon(
-              _modelStatus == 'loaded' ? Icons.check_circle : Icons.error,
-              color: _modelStatus == 'loaded' ? Colors.green : Colors.red,
-              size: 24,
-            ),
+            // Backend Connection Status Indicator
+            const ConnectionStatusIndicator(showLabel: true),
           ],
         ),
         backgroundColor: themeProvider.cardColor,

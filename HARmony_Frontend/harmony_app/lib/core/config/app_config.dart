@@ -4,12 +4,12 @@ import 'dart:io' show Platform;
 class AppConfig {
   // Backend Configuration
   static String get backendBaseUrl {
-    if (Platform.isAndroid) {
-      // For Android emulator use 10.0.2.2, for physical device use host IP
-      return 'http://192.168.8.106:8000';  // Host machine IP
-    } else {
-      return 'http://localhost:8000';
-    }
+    // Always point at localhost:8000.  During development we use adb reverse
+    // to forward the device's localhost port back to the host machine.  Run
+    // `adb reverse tcp:8000 tcp:8000` once before launching the app and the
+    // mobile client can simply use http://localhost:8000 regardless of the
+    // network configuration.  This avoids Wi‑Fi/VPN/firewall headaches.
+    return 'http://localhost:8000';
   }
   // NOTE: backend endpoints are mounted at root; do not append '/api' here
   static String get apiBaseUrl => backendBaseUrl;

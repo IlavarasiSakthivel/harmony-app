@@ -23,6 +23,11 @@ class BackendConfigService extends ChangeNotifier {
       // fallback to AppConfig default if nothing saved yet
       _baseUrl = AppConfig.apiBaseUrl;
     }
+    // Force update to new localhost URL if still using old IP
+    if (_baseUrl == 'http://192.168.8.106:8000' || _baseUrl == 'http://10.143.65.91:8000') {
+      _baseUrl = AppConfig.apiBaseUrl;
+      await prefs.setString(_prefsKey, _baseUrl);
+    }
     notifyListeners();
   }
 
